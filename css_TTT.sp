@@ -10,6 +10,7 @@ int max;
 bool g_Traitor[MAXPLAYERS+1] = {false, ...};
 ConVar gcvar_timer_ttt;
 ConVar gcvar_max_traitor;
+ConVar g_cvar_ff;
 
 public Plugin myinfo =
 {
@@ -27,6 +28,7 @@ public void OnPluginStart()
 	HookEvent("player_spawn", Event_PlayerSpawnTTT);
 	HookEvent("player_death", EventPlayerDeathTTT);
 
+	g_cvar_ff = FindConVar("mp_friendlyfire");
 	gcvar_timer_ttt = CreateConVar("sm_ttt_timer", "30", "set timer after freeze to choose traitor.");
 	g_timer_ttt = gcvar_timer_ttt.FloatValue;
 	gcvar_timer_ttt.AddChangeHook(OnConVarChanged);
@@ -39,7 +41,7 @@ public void OnPluginStart()
 public void roundStartTTT(Event event, const char[] name, bool dontBroadcast)
 {
     ServerCommand("mp_tkpunish 0");
-    ServerCommand("mp_friendlyfire 0");
+    g_cvar_ff.SetInt(0);
 }
 
 public void FreezeEndTTT(Event event, const char[] name, bool dontBroadcast)
@@ -79,6 +81,7 @@ public Action SetTraidor(Handle timer)
 			g_Traitor[Traitor] = true;
 		}
 	}
+	g_cvar_ff.SetInt(1);
 	PrintToChatTTT();
 }
 
