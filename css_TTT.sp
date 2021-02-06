@@ -8,9 +8,11 @@ int maxt;
 int Traitor = 0;
 int max;
 bool g_Traitor[MAXPLAYERS+1] = {false, ...};
+bool deathnotice;
 ConVar gcvar_timer_ttt;
 ConVar gcvar_max_traitor;
 ConVar g_cvar_ff;
+ConVar dn;
 
 public Plugin myinfo =
 {
@@ -26,18 +28,33 @@ public void OnPluginStart()
 	HookEvent("round_start", roundStartTTT);
 	HookEvent("round_freeze_end", FreezeEndTTT);
 	HookEvent("player_spawn", Event_PlayerSpawnTTT);
-	HookEvent("player_death", EventPlayerDeathTTT);
+	HookEvent("player_death", EventPlayerDeathTTT,EventHookMode_Pre);
 
 	g_cvar_ff = FindConVar("mp_friendlyfire");
 	gcvar_timer_ttt = CreateConVar("sm_ttt_timer", "30", "set timer after freeze to choose traitor.");
 	g_timer_ttt = gcvar_timer_ttt.FloatValue;
 	gcvar_timer_ttt.AddChangeHook(OnConVarChanged);
 
-	gcvar_max_traitor = CreateConVar("sm_ttt_max", "1", "set timer after freeze to choose traitor.");
+	gcvar_max_traitor = CreateConVar("sm_ttt_max", "1", "set max traitor for alive players.");
 	maxt = gcvar_max_traitor.IntValue;
 	gcvar_max_traitor.AddChangeHook(OnConVarChanged);
+
+	dn = CreateConVar("sm_hud_deathnotice", "1", "Enable/Disable to show players hud kill messages", FCVAR_NONE, true, 0.0, true, 1.0);
+	HookConVarChange(dn, OnConVarChanged);
+	OnConVarChanged(dn, "", "");
+
+	AutoExecConfig(true, "css_ttt");
 }
 
+public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	deathnotice = GetConVarBool(dn);
+
+	if (convar == gcvar_timer_ttt)
+		g_timer_ttt = gcvar_timer_ttt.FloatValue;
+	if(convar == gcvar_max_traitor)
+		maxt = gcvar_max_traitor.IntValue;
+}
 public void roundStartTTT(Event event, const char[] name, bool dontBroadcast)
 {
     ServerCommand("mp_tkpunish 0");
@@ -54,19 +71,13 @@ public void Event_PlayerSpawnTTT(Event event, const char[] name, bool dontBroadc
 	g_Traitor[client] = false;
 }
 
-public void EventPlayerDeathTTT(Event event, const char[] name, bool dontBroadcast)
+public Action EventPlayerDeathTTT(Event event, const char[] name, bool dontBroadcast)
 {
-    SetEventBroadcast(event, true);
+
+	return deathnotice ? Plugin_Continue:Plugin_Handled;
 } 
 
 
-public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
-{
-	if (convar == gcvar_timer_ttt)
-		g_timer_ttt = gcvar_timer_ttt.FloatValue;
-	if(convar == gcvar_max_traitor)
-	maxt = gcvar_max_traitor.IntValue;
-}
 public void OnClientPostAdminCheck(int client)
 {
 	g_Traitor[client] = false;
