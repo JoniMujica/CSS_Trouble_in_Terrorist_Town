@@ -2,6 +2,8 @@
 #include <sdktools>
 #include <cstrike>
 
+bool g_Traidor[MAXPLAYERS+1] = {false, ...};
+
 public Plugin myinfo =
 {
 	name = "TTT CS:SOURCE",
@@ -18,6 +20,7 @@ public void OnPluginStart()
 }
 public void OnClientPostAdminCheck(int client)
 {
+	g_Traidor[client] = false;
 }
 
 public void roundStartTTT(Event event, const char[] name, bool dontBroadcast)
@@ -28,4 +31,10 @@ public void roundStartTTT(Event event, const char[] name, bool dontBroadcast)
 
 public void FreezeEndTTT(Event event, const char[] name, bool dontBroadcast)
 {
+	CreateTimer(30.0,SetTraidor)
+}
+
+public Action SetTraidor(Handle timer)
+{
+
 }
