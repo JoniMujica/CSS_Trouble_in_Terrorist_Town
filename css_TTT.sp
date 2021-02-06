@@ -2,7 +2,9 @@
 #include <sdktools>
 #include <cstrike>
 
+float g_timer_ttt;
 bool g_Traidor[MAXPLAYERS+1] = {false, ...};
+ConVar gcvar_timer_ttt;
 
 public Plugin myinfo =
 {
@@ -17,6 +19,17 @@ public void OnPluginStart()
 {
     HookEvent("round_start", roundStartTTT);
     HookEvent("round_freeze_end", FreezeEndTTT);
+	gcvar_timer_ttt = CreateConVar("sm_ttt_timer", "30", "set timer after freeze to choose traitor.");
+	g_timer_ttt = gcvar_timer_ttt.FloatValue;
+	gcvar_timer_ttt.AddChangeHook(OnConVarChanged);
+}
+
+public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	if (convar == gcvar_timer_ttt)
+	{
+		g_timer_ttt = gcvar_timer_ttt.FloatValue;
+	}
 }
 public void OnClientPostAdminCheck(int client)
 {
@@ -31,10 +44,21 @@ public void roundStartTTT(Event event, const char[] name, bool dontBroadcast)
 
 public void FreezeEndTTT(Event event, const char[] name, bool dontBroadcast)
 {
-	CreateTimer(30.0,SetTraidor)
+	CreateTimer(g_timer_ttt,SetTraidor)
 }
 
 public Action SetTraidor(Handle timer)
 {
 
 }
+
+
+int RandomPlayer()
+{
+	int clients[MaxClients+1], clientCount;
+	for (int i = 1; i <= MaxClients; i++)
+	if (IsClientInGame(i) && IsPlayerAlive(i))
+	clients[clientCount++] = i;
+	return (clientCount == 0) ? -1 : clients[GetRandomInt(0, clientCount-1)];
+}
+int 
