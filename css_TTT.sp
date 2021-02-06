@@ -19,6 +19,7 @@ public void OnPluginStart()
 {
     HookEvent("round_start", roundStartTTT);
     HookEvent("round_freeze_end", FreezeEndTTT);
+	HookEvent("player_spawn", Event_PlayerSpawnTTT);
 	gcvar_timer_ttt = CreateConVar("sm_ttt_timer", "30", "set timer after freeze to choose traitor.");
 	g_timer_ttt = gcvar_timer_ttt.FloatValue;
 	gcvar_timer_ttt.AddChangeHook(OnConVarChanged);
@@ -46,6 +47,11 @@ public void FreezeEndTTT(Event event, const char[] name, bool dontBroadcast)
 {
 	CreateTimer(g_timer_ttt,SetTraidor)
 }
+public void Event_PlayerSpawnTTT(Event event, const char[] name, bool dontBroadcast)
+{
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	g_Traidor[client] = false;
+}
 
 public Action SetTraidor(Handle timer)
 {
@@ -61,4 +67,3 @@ int RandomPlayer()
 	clients[clientCount++] = i;
 	return (clientCount == 0) ? -1 : clients[GetRandomInt(0, clientCount-1)];
 }
-int 
