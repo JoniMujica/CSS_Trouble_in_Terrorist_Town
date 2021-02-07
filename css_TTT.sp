@@ -2,22 +2,23 @@
 #include <sdktools>
 #include <cstrike>
 #include <morecolors>
-#define PLUGIN_VERSION "1.2"
+#include <sdkhooks>
+#define PLUGIN_VERSION "1.3"
+#define TK_TTT(%1,%2) (1 <= %1 <= MaxClients && 1 <= %2 <= MaxClients && %1 != %2 && GetClientTeam(%1) == GetClientTeam(%2))
 float g_timer_ttt;
 int maxt;
 int Traitor = 0;
 int max;
 bool g_Traitor[MAXPLAYERS+1] = {false, ...};
-bool deathnotice;
 ConVar gcvar_timer_ttt;
 ConVar gcvar_max_traitor;
 ConVar g_cvar_ff;
-ConVar dn;
+
 
 public Plugin myinfo =
 {
 	name = "TTT CS:SOURCE",
-	author = "Slash",
+	author = "Slash & RMinks",
 	description = "SET GAMEMODE TTT IN Cs:Source",
 	version = PLUGIN_VERSION,
 	url = "http://www.sourcemod.net/"
@@ -39,17 +40,13 @@ public void OnPluginStart()
 	maxt = gcvar_max_traitor.IntValue;
 	gcvar_max_traitor.AddChangeHook(OnConVarChanged);
 
-	dn = CreateConVar("sm_hud_deathnotice", "1", "Enable/Disable to show players hud kill messages", FCVAR_NONE, true, 0.0, true, 1.0);
-	HookConVarChange(dn, OnConVarChanged);
-	OnConVarChanged(dn, "", "");
+
 
 	AutoExecConfig(true, "css_ttt");
 }
 
 public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	deathnotice = GetConVarBool(dn);
-
 	if (convar == gcvar_timer_ttt)
 		g_timer_ttt = gcvar_timer_ttt.FloatValue;
 	if(convar == gcvar_max_traitor)
@@ -64,6 +61,8 @@ public void roundStartTTT(Event event, const char[] name, bool dontBroadcast)
 public void FreezeEndTTT(Event event, const char[] name, bool dontBroadcast)
 {
 	CreateTimer(g_timer_ttt,SetTraidor);
+	int time = RoundFloat(g_timer_ttt);
+	CPrintToChatAll("{orangered}[☣️ToxiC☣️TTT] : {white}El juego iniciará en {lightgreen}%i {white}segundos", time);
 }
 public void Event_PlayerSpawnTTT(Event event, const char[] name, bool dontBroadcast)
 {
@@ -71,10 +70,16 @@ public void Event_PlayerSpawnTTT(Event event, const char[] name, bool dontBroadc
 	g_Traitor[client] = false;
 }
 
-public Action EventPlayerDeathTTT(Event event, const char[] name, bool dontBroadcast)
+public Action:EventPlayerDeathTTT(Event event, const char[] name, bool dontBroadcast)
 {
+	new victim = GetClientOfUserId(GetEventInt(event, "userid"));
+	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 
-	return deathnotice ? Plugin_Continue:Plugin_Handled;
+	if (TK_TTT(victim, attacker))
+	{
+		SetEntProp(attacker, Prop_Data, "m_iFrags", GetClientFrags(attacker) + 1);
+	}
+	return Plugin_Handled;
 } 
 
 
@@ -94,6 +99,8 @@ public Action SetTraidor(Handle timer)
 	}
 	g_cvar_ff.SetInt(1);
 	PrintToChatTTT();
+	TK_TTT_KILLMSG();
+	HideRadarTTT();
 }
 
 int RandomPlayer()
@@ -122,12 +129,11 @@ int maxTraitor(){
 	return maxts;
 }
 
-
 void PrintToChatTTT(){
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientInGame(i)){
-			 if (g_Traitor[i])
+			if (g_Traitor[i])
 			{        
 				CPrintToChat(i, "{orangered}[☣️ToxiC☣️TTT] : {white}Sos el {darkred}traidor{white}, mata a tus compañeros sin que te descubran!");     
 			}
@@ -138,4 +144,79 @@ void PrintToChatTTT(){
 		}
 	}
 	CPrintToChatAll("{orangered}[☣️ToxiC☣️TTT] : {white}El {red}traidor {white}ha sido elegido, el juego comienza");
+}
+
+stock TK_TTT_KILLMSG()
+{
+	HookUserMessage(GetUserMessageId("TextMsg"), Hook_TextMsg, true);
+	HookUserMessage(GetUserMessageId("HintText"), Hook_HintText, true);
+	
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i))
+		{
+			SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
+		}
+	}
+}
+
+public Action:Hook_TextMsg(UserMsg msg_id, Handle bf, const players[], playersNum, bool reliable, bool init)
+{
+	decl String:msg[256];
+	BfReadString(bf, msg, sizeof(msg));
+
+	if (StrContains(msg, "teammate_attack") != -1)
+	{
+		return Plugin_Handled;
+	}
+
+	if (StrContains(msg, "Killed_Teammate") != -1)
+	{
+		return Plugin_Handled;
+	}
+		
+	return Plugin_Continue;
+}
+
+public Action:Hook_HintText(UserMsg msg_id, Handle bf, const players[], playersNum, bool reliable, bool init)
+{
+	decl String:msg[256];
+	BfReadString(bf, msg, sizeof(msg));
+	
+	if (StrContains(msg, "spotted_a_friend") != -1)
+	{
+		return Plugin_Handled;
+	}
+
+	if (StrContains(msg, "careful_around_teammates") != -1)
+	{
+		return Plugin_Handled;
+	}
+	
+	if (StrContains(msg, "try_not_to_injure_teammates") != -1)
+	{
+		return Plugin_Handled;
+	}
+
+	return Plugin_Continue;
+}
+
+public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
+{
+	if (TK_TTT(victim, attacker) && inflictor == attacker)
+	{
+		damage /= 0.35;
+		return Plugin_Changed;
+	}
+
+	return Plugin_Continue;
+}
+
+stock HideRadarTTT()
+{
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		SetEntPropFloat(i, Prop_Send, "m_flFlashDuration", 3600.0);
+		SetEntPropFloat(i, Prop_Send, "m_flFlashMaxAlpha", 0.5);
+	}
 }
